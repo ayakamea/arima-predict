@@ -28,6 +28,10 @@ class LongBuySell {
     this.sells=0;
     this.predictions=0;
     this.shares_to_buy=shares_to_buy;
+    this.buy_price = 0.0;
+    this.rewards=0;
+    this.wins=0;
+    this.loses=0;
 
     ///possibly unneed variables below
     this.long = []
@@ -98,17 +102,21 @@ class LongBuySell {
   //////////////RUN END
 
   async arimaBuySell() {
+
     //get account equity(total value of everything owned)
     let account_equity = await this.getAccountEquity();
 
-    //get the shares currently in possession for stock
+    //get the shares currently in possession for the stock
     let shares_bought = await this.getStockSharesBought(stocks[0]);
 
     ///gets a 60 minute recent history of stock
-    let stockArray = await this.getStockPrices(stocks[0]);//get array of history for the stock
+    let stockArray = await this.getStockPrices(stocks[0]);
 
     ///gets the next predicted price
-    let predicted_price = await arima_prediction(stockArray);//returns predicted price
+    let predicted_price = await arima_prediction(stockArray);
+
+    //prints out stats
+    console.log("Equity="+account_equity+" stock="+stocks[0]+" shares="+shares_bought+" price="+stockArray[stockArray.length-1]+" prediction="+predicted_price)
 
     ///check if price is forecasted to up or down
     let price_forecast = 0;//hold
@@ -121,10 +129,10 @@ class LongBuySell {
     ///buy/sell/hold based on forecast
     if (price_forecast == 1){//up
       if (shares_bought == 0){//buy shares
-        buy_price=parseFloat(stockArray[stockArray.length-1]);//saves buying price
+        this.buy_price=parseFloat(stockArray[stockArray.length-1]);//saves buying price
         shares_bought = this.shares_to_buy;
         if (shares_to_buy == 0){//buy max if none was set by user
-          shares_bought = Math.floor((account_equity-1)/buy_price);//buys max stocks-1
+          shares_bought = Math.floor((account_equity-1)/this.buy_price);//buys max stocks-1
         }
         //order shares
         try {
@@ -152,6 +160,14 @@ class LongBuySell {
             }
             shares_bought=shares_bought*-1;//shares have been sold
             this.sells += 1;
+            //compares sell price with buy price to know if it's prediction was correct
+            if (stockArray[stockArray.length-1] > this.buy_price){
+              this.rewards-=1;
+              this.wins+=1;
+            } else if (stockArray[stockArray.length-1] < this.buy_price){
+              this.rewards+=1;
+              this.loses+=1;
+            }
         }
     }
     this.predictions+=1;
