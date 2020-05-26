@@ -116,7 +116,7 @@ class LongBuySell {
     let predicted_price = await arima_prediction(stockArray);
 
     //prints out stats
-    console.log("Equity="+account_equity+" stock="+stocks[0]+" shares="+shares_bought+" price="+stockArray[stockArray.length-1]+" prediction="+predicted_price)
+    console.log("Equity="+account_equity+" stock="+stocks[0]+" shares="+shares_bought+" price="+stockArray[stockArray.length-1]+" prediction="+predicted_price+" w="+this.wins+" l="+this.loses+" r="+this.rewards)
 
     ///check if price is forecasted to up or down
     let price_forecast = 0;//hold
