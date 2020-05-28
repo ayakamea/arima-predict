@@ -19,10 +19,10 @@ class LongBuySell {
       usePolygon: USE_POLYGON
     })
 
-    //let stocks = ['DOMO', 'TLRY', 'SQ', 'MRO', 'AAPL', 'GM', 'SNAP', 'SHOP', 'SPLK', 'BA', 'AMZN', 'SUI', 'SUN', 'TSLA', 'CGC', 'SPWR', 'NIO', 'CAT', 'MSFT', 'PANW', 'OKTA', 'TWTR', 'TM', 'RTN', 'ATVI', 'GS', 'BAC', 'MS', 'TWLO', 'QCOM']
+    //this.stocks = ['DOMO', 'TLRY', 'SQ', 'MRO', 'AAPL', 'GM', 'SNAP', 'SHOP', 'SPLK', 'BA', 'AMZN', 'SUI', 'SUN', 'TSLA', 'CGC', 'SPWR', 'NIO', 'CAT', 'MSFT', 'PANW', 'OKTA', 'TWTR', 'TM', 'RTN', 'ATVI', 'GS', 'BAC', 'MS', 'TWLO', 'QCOM']
     //stocks that did good in past arima tests, should be all cheap penny stocks
-    let stocks = ['BIOC','BNGO','CNAT','MARK','INUV','GNUS','DFFN','STON'];//will only buy and sell the first stock on this list currently
-    this.stockList = stocks.map(item => ({ name: item, pc: 0 }))
+    this.stocks = ['BIOC','BNGO','CNAT','MARK','INUV','GNUS','DFFN','STON'];//will only buy and sell the first stock on this list currently
+    this.stockList = this.stocks.map(item => ({ name: item, pc: 0 }))
 
     this.buys=0;
     this.sells=0;
@@ -32,6 +32,11 @@ class LongBuySell {
     this.rewards=0;
     this.wins=0;
     this.loses=0;
+    this.rights=0;
+    this.wrongs=0;
+    this.holds=0;
+    this.draws=0;
+    this.price_forecast = -1;
 
     ///possibly unneed variables below
     this.long = []
@@ -102,57 +107,77 @@ class LongBuySell {
   //////////////RUN END
 
   async arimaBuySell() {
-
     //get account equity(total value of everything owned)
     let account_equity = await this.getAccountEquity();
 
     //get the shares currently in possession for the stock
-    let shares_bought = await this.getStockSharesBought(stocks[0]);
+    let shares_bought = await this.getStockSharesBought(this.stocks[0]);
 
     ///gets a 60 minute recent history of stock
-    let stockArray = await this.getStockPrices(stocks[0]);
+    let stockArray = await this.getStockPrices(this.stocks[0]);
+
+    //checks if last prediction was correct
+    if (this.price_forecast != -1){
+      if (stockArray[stockArray.length-1] > stockArray[stockArray.length-2]){//up
+        if (this.price_forecast == 1){//right
+          this.rights+=1;
+        } else if (this.price_forecast == 2){//wrong
+          this.wrongs+=1;
+        }
+      } else if (this.price_forecast == 2 && stockArray[stockArray.length-1] < stockArray[stockArray.length-2]){//down
+        if (this.price_forecast == 2){//right
+          this.rights+=1;
+        } else if (this.price_forecast == 1){//wrong
+          this.wrongs+=1;
+        }
+      }
+    }
 
     ///gets the next predicted price
     let predicted_price = await arima_prediction(stockArray);
 
-    //prints out stats
-    console.log("Equity="+account_equity+" stock="+stocks[0]+" shares="+shares_bought+" price="+stockArray[stockArray.length-1]+" prediction="+predicted_price+" w="+this.wins+" l="+this.loses+" r="+this.rewards)
+    //prints out stats to terminal
+    let date_ob = new Date(Date.now());
+    console.log("Equity="+account_equity+" stock="+this.stocks[0]+" shares="+shares_bought+" price="+stockArray[stockArray.length-1]+" prediction="+predicted_price+" w="+this.wins+"/"+this.rights+" l="+this.loses+"/"+this.wrongs+ " h="+this.holds+" d="+this.draws+" r="+this.rewards+" p="+this.predictions+" time="+date_ob)
 
     ///check if price is forecasted to up or down
-    let price_forecast = 0;//hold
+    this.price_forecast = 0;//hold
     if (predicted_price > stockArray[stockArray.length-1]){
-      price_forecast = 1;//up
-    } else if (predicted_price > stockArray[stockArray.length-1]){
-      price_forecast = 2;//down
+      this.price_forecast = 1;//up
+    } else if (predicted_price < stockArray[stockArray.length-1]){
+      this.price_forecast = 2;//down
     }
 
     ///buy/sell/hold based on forecast
-    if (price_forecast == 1){//up
+    if (this.price_forecast == 1){//up
       if (shares_bought == 0){//buy shares
         this.buy_price=parseFloat(stockArray[stockArray.length-1]);//saves buying price
         shares_bought = this.shares_to_buy;
-        if (shares_to_buy == 0){//buy max if none was set by user
+        if (this.shares_to_buy == 0){//buy max if none was set by user
           shares_bought = Math.floor((account_equity-1)/this.buy_price);//buys max stocks-1
+          if (shares_bought > 1000){
+            shares_bought = 1000;//limit max buy to 1000 shares
+          }
         }
         //order shares
         try {
           await this.submitOrder({
-            shares_bought,
-            stock: stocks[0],
+            quantity: shares_bought,
+            stock: this.stocks[0],
             side: SideType.BUY
           })
         } catch (err) {
           log(err.error)
         }  
         this.buys += 1;
-      } else {holds+=1;};//holds position 
-    } else if (price_forecast == 2){//down
+      } else {this.holds+=1;};//holds position 
+    } else if (this.price_forecast == 2){//down
         if (shares_bought > 0){
             //sell order shares
             try {
               await this.submitOrder({
-                shares_bought,
-                stock: stocks[0],
+                quantity: shares_bought,
+                stock: this.stocks[0],
                 side: SideType.SELL
               })
             } catch (err) {
@@ -162,11 +187,13 @@ class LongBuySell {
             this.sells += 1;
             //compares sell price with buy price to know if it's prediction was correct
             if (stockArray[stockArray.length-1] > this.buy_price){
-              this.rewards-=1;
+              this.rewards+=1;
               this.wins+=1;
             } else if (stockArray[stockArray.length-1] < this.buy_price){
-              this.rewards+=1;
+              this.rewards-=1;
               this.loses+=1;
+            } else {
+              this.draws+=1;
             }
         }
     }
@@ -191,12 +218,13 @@ class LongBuySell {
     try {
       position = await this.alpaca.getPosition(stockname);
       shares = Math.abs(position.qty);
+      return shares;//return shares
       //let symbol = position.symbol//stock symbol
       //let position_side = position.side//position side, Long or Short(all should be Long)
     } catch (err) {
-      log(err.error)
+      //log(err.error)
+      return 0;//no shares owned
     }
-    return shares;
   }
 
   //get current price history of stock.
@@ -216,6 +244,8 @@ class LongBuySell {
               outprices.push(resp[stockname][j].closePrice);//saves close prices
             }
           }
+          outprices.reverse();//added to fix reversal to descending(oldest to newest) order!
+          console.log(outprices);//stock array might be backwards!!!
           resolve(outprices);//will return the close prices list
         } catch (err) {
           log(err.message)
@@ -300,7 +330,7 @@ class LongBuySell {
 async function arima_prediction(ts,return_predictions=6){
   //ARIMA = Auto-Regressive Intergrated Moving Average
   //ts = Time Series, an array of price history from oldest to newest
-  arima_pred = ARIMA(ts, return_predictions, {//set to predict time steps into the future
+  let arima_pred = ARIMA(ts, return_predictions, {//set to predict time steps into the future
       method: 0,      // ARIMA method (Default: 0)
       optimizer: 6,//5,//6, // Optimization method (Default: 6)
       p: 2,      // Number of Autoregressive coefficients
