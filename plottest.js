@@ -46,19 +46,15 @@ let stockFiles =[
 ];
 let stockFile_index = 6;//index of file to load
 
-const data = [{x: [1, 4, 5], y: [1, 2, 1], type: 'line'}];
-const data2 = [{x: [1, 2, 3], y: [1, 2, 1], type: 'scatter'}];
-
 plotFromFile(stockFiles[stockFile_index]);
 
-//plot2linesOn1Graph();
-
+///////////plot from file data
 function plotFromFile(filename='plotdata.json', path = 'stocks/', type='line'){
     let plotArrayFull = loadJSONData(filename, path);//load x,y points file
     let plotCloses = {x: [],y: [], type: 'scatter', name: 'Closes',};
     let plotHighs = {x: [],y: [], type: type, name: 'Highs',};
     let plotLows = {x: [],y: [], type: type, name: 'Lows',};
-    let plotClosesSMA = {x: [],y: [], type: type, name: 'SMA',};
+    let plotClosesSMA = {x: [],y: [], type: type, name: 'Simple Moving Average',};
     let SMAperiod = 12;
     plotArrayFull.reverse();//reverse the array to make it oldest to newest
 
@@ -76,12 +72,6 @@ function plotFromFile(filename='plotdata.json', path = 'stocks/', type='line'){
         return (index+SMAperiod);
     });//index+12 for SMA
 
-    //console.log(plotClosesSMA)
-
-    //console.log(plotCloses);
-    //plotlib.plot([plotClosesSMA]);
-    //plotlib.plot([plotHighs, plotCloses, plotLows, plotClosesSMA]);
-    //plotlib.plot([plotLows, plotClosesSMA]);
     const layout = [{
         polar: {
           radialaxis: {
@@ -91,11 +81,11 @@ function plotFromFile(filename='plotdata.json', path = 'stocks/', type='line'){
         }
     }];
 
-    //plotlib.plot([plotCloses], [layout]);
-    plotlib.plot([plotHighs, plotCloses, plotLows]);
+    plotlib.plot([plotHighs, plotCloses, plotLows, plotClosesSMA]);
 }
 
 
+/////simple plotting examples
 function plot2linesOn1Graph(){
     const trace1 = {x: [1, 2, 5, 6], y: [1, 2, 4, 2], type: 'scatter'};
     const trace2 = {x: [3, 4], y: [9, 16], type: 'scatter'};
@@ -103,10 +93,13 @@ function plot2linesOn1Graph(){
 }
 
 function plot1line(){
+    let data = [{x: [1, 4, 5], y: [1, 2, 1], type: 'line'}];
     plotlib.plot(data);
 }
 
 function plot2on1page(){
+    const data = [{x: [1, 4, 5], y: [1, 2, 1], type: 'line'}];
+    const data2 = [{x: [1, 2, 3], y: [1, 2, 1], type: 'scatter'}];
     plotlib.stack(data);
     plotlib.stack(data2);
     plotlib.plot();
