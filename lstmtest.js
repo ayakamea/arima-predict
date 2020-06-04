@@ -1,5 +1,7 @@
 const fs = require('fs');//file system for handling files
 const tf = require('@tensorflow/tfjs-node');//tensorflow.js
+const TI_SMA = require('technicalindicators').SMA;
+const plotlib = require('nodeplotlib');
 
 ///stocks
 let stockFiles =[
@@ -13,11 +15,20 @@ let stockFiles =[
     "StoneMor Partners L.P._STON_1min_20200524235609",//Good
     "Tesla, Inc_TSLA_1min(for 5days total)_20200524204921",//risky
 ];
-let stockArray = loadStockData(stockFiles[0]);//load stock file
-stockArray.reverse();//reverse the array to make data from oldest to newest
+let stockArrayFull = loadStockData(stockFiles[0]);//load stock file
+stockArrayFull.reverse();//reverse the array to make data from oldest to newest
+let stockArray = [];
+let stockArrayDate = [];
+for(let t = 0; t< stockArrayFull.length; t++){
+    stockArrayDate.push(stockArrayFull[t].date);//get only the closing prices
+    stockArray.push(stockArrayFull[t].close);//get only the closing prices
+}
+//let stockArray_SMA = TI_SMA.calculate({period : 12, values : stockArray});//create an SMA
+//stockArray = stockArray_SMA;
+console.log(stockArrayDate)
 
-let inputSize = 30;//10;//10 minutes input
-let outputSize = 5;//5 future predictions
+let inputSize = 10;//10 minutes input
+let outputSize = 1;//5 future predictions
 
 let stockIn = [];
 let stockOut = [];
@@ -28,7 +39,7 @@ for (let t=inputSize;t<stockArray.length-outputSize;t++){
     let tiny = [];
     tiny.push(0);
     for (let r=t-inputSize; r<t; r++){
-        stockIn.push(stockArray[r].close);
+        stockIn.push(stockArray[r]);
         //tiny[0]=stockArray[r].close;
         //console.log(stockArray[r].close)
         //mini.push(tiny);
@@ -42,7 +53,7 @@ for (let t=inputSize;t<stockArray.length-outputSize;t++){
     mini = [];
     for (let r=t; r<t+outputSize; r++){
         //mini.push(stockArray[r].close);
-        stockOut.push(stockArray[r].close);
+        stockOut.push(stockArray[r]);
     }
     //stockOut.push(mini);
 }
@@ -57,11 +68,12 @@ const model = tf.sequential();//creates empty feed-forward nerutal network
 
 ///create and add hidden lstm layer
 const hidden = tf.layers.lstm({//lstm - long-short term memory layer
-    units: 12,//8,// number of nodes
+    units: 10,//inputSize,//10,//8,// number of nodes
     inputShape: [inputSize, 1],//this is for the inputs, 10 inputs
     activation: 'sigmoid',//activation function
 });
 model.add(hidden);//add the hidden layer to the model
+
 
 //add output layer
 const output = tf.layers.dense({//dense = every layer is connected to every node in the previous layer
@@ -72,8 +84,8 @@ const output = tf.layers.dense({//dense = every layer is connected to every node
 model.add(output);//add output layer
 
 //optimizer for model (using gradient descent)
-const learningRate = 0.5;//this is the learning rate
-const sgdOpt = tf.train.sgd(learningRate);//optimizer that tries to get the lowest error
+const learningRate = 0.01//0.5;//this is the learning rate
+const sgdOpt = tf.train.adam(learningRate);//tf.train.sgd(learningRate);//optimizer that tries to get the lowest error
 
 //compile model
 model.compile({
@@ -110,6 +122,24 @@ train().then(() => {
     predictions.print();
     console.log('real');
     ys.print();
+    //console.log(ys.dataSync());
+    let t_realdata=ys.dataSync();//return as 1dArray
+    let t_data=predictions.dataSync();//return as 1dArray
+    let realdata = {x: [],y: [],type: 'line',name: 'Closing Price'}
+    let outdata = {
+        x: [],
+        y: [],
+        type: 'line',
+        name: 'LSTM prediction'
+    }
+    for(let t=0;t<t_data.length;t++){
+        realdata.x.push(t);
+        realdata.y.push(t_realdata[t]);
+        outdata.x.push(t);
+        outdata.y.push(t_data[t]);
+    }
+    //console.log(outdata);
+    plotlib.plot([realdata,outdata]);
 });
     
 async function train(){
