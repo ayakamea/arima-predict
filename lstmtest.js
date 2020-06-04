@@ -67,12 +67,24 @@ console.log(stockOut.length);
 const model = tf.sequential();//creates empty feed-forward nerutal network
 
 ///create and add hidden lstm layer
-const hidden = tf.layers.lstm({//lstm - long-short term memory layer
+/*const hidden = tf.layers.lstm({//lstm - long-short term memory layer
     units: 10,//inputSize,//10,//8,// number of nodes
     inputShape: [inputSize, 1],//this is for the inputs, 10 inputs
     activation: 'sigmoid',//activation function
 });
-model.add(hidden);//add the hidden layer to the model
+model.add(hidden);//add the hidden layer to the model*/
+
+let lstm_cells = [];
+let lstm_layers = 4;//number of hidden lstm layers
+for (let index = 0; index < lstm_layers; index++) {
+     lstm_cells.push(tf.layers.lstmCell({units: 10}));
+}
+
+model.add(tf.layers.rnn({
+  cell: lstm_cells,
+  inputShape: [inputSize, 1],
+  returnSequences: false
+}));
 
 
 //add output layer
