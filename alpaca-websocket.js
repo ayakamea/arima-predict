@@ -1,3 +1,4 @@
+//code below from alpaca official website
 /**
  * this example shows how to use the alpaca data websocket to subscribe to
  * events. no trading will be done here but you could easily use long-short.js
