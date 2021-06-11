@@ -1,5 +1,5 @@
 //Nodejs version of: https://www.npmjs.com/package/js-polynomial-regression
-//note inputs have be simplifed
+//note inputs have been simplifed
 
 class Matrix {
 
