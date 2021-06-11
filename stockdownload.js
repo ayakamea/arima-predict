@@ -1,3 +1,4 @@
+//downloads stock data using Alpha Vantage API
 const jsonfile = require('jsonfile')
 const fs = require('fs')
 
