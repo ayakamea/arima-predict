@@ -1,3 +1,4 @@
+//note most of this code is from a site detailing LSTM
 const tf = require('@tensorflow/tfjs-node');
 // TensorFlow.js example: Trains LSTM model to perform the following sequence task:
 //
