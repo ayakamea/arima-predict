@@ -1,3 +1,4 @@
+//most of code below from alpaca official website
 const fs = require('fs');//file system for handling files
 const ARIMA = require('arima');//ARIMA
 const Alpaca = require('@alpacahq/alpaca-trade-api')//Alpaca API
